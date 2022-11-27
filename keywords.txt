@@ -1,0 +1,27 @@
+#######################################
+# Syntax Coloring Map LD2410
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+LD2410	KEYWORD1	LD2410
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+enableEngMode       KEYWORD2
+factoryReset        KEYWORD2
+read                KEYWORD2
+readFirmwareVersion KEYWORD2
+readParameter       KEYWORD2
+restart             KEYWORD2
+sendCommand         KEYWORD2
+sendRequestToRadar  KEYWORD2
+setBaudRate         KEYWORD2
+setGateSensConf     KEYWORD2
+setMaxDistAndDur    KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################

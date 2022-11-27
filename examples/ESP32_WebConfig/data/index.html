@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>LD2410 Radar</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.6.0/chart.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-plugin-dragdata@2.2.3/dist/chartjs-plugin-dragdata.min.js"></script>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+    </body>
+</head>
+
+<body>
+
+    <div>
+        <canvas id="radarMotionChart"
+            style="display: block; box-sizing: border-box; height:500px; width: 400px;"></canvas>
+    </div>
+
+    <fieldset>
+        <legend>Radar Settings</legend>
+
+        <div>
+            <button class="btn">Factory Reset</button>
+        </div>
+
+        <div>
+            <button class="btn">Restart</button>
+        </div>
+
+        <div>
+            <button class="btn">Enable Engineering Mode</button>
+        </div>
+
+        <div>
+            <button class="btn">Disable Engineering Mode</button>
+        </div>
+        
+        <div>
+            <label for="maxMovingGate">Max moving target Gate</label>
+            <input class="inp" type="number" id="maxMovingGate" name="tentacles" min="0" max="8">
+        </div>
+        
+        <div>
+            <label for="maxStationaryGate">Max stationary target Gate</label>
+            <input class="inp" type="number" id="maxStationaryGate" name="tentacles" min="2" max="8">
+        </div>
+        
+        <div>
+            <label for="detectionTime">Detection time (Seconds)</label>
+            <input class="inp" type="number" id="detectionTime" name="tentacles" min="0" max="600">
+        </div>
+        
+        <label for="baudrate">Baud Rate to set:</label>
+        <select class="inp" id="baudRate">
+            <option value="0">-</option>
+            <option value="1">9600</option>
+            <option value="2">19200</option>
+            <option value="3">38400</option>
+            <option value="4">57600</option>
+            <option value="5">115200</option>
+            <option value="6">230400</option>
+            <option value="7">256000</option>
+            <option value="8">460800</option>
+        </select>
+
+        <div>
+            <label id="Radar Firmware Version" for="FwVersion">Firmware Version: </label>
+        </div>
+
+        <div>
+            <label id="baudRateDetected" for="baudrate">Baud Rate detected:</label>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>ESP Helper</legend>
+
+        <div>
+            <button onclick="setTimeout(initWebSocket, 4000)" class="btn">Restart ESP</button>
+        </div>
+    </fieldset>
+    <script>
+
+        var options = {
+
+            data: {
+                labels: ["0.00m", "0.75m", "1.50m", "2.25m", "3.00m", "3.75m", "4.50m", "5.25m", "6.00m"],
+                datasets: [{
+                    type: 'line',
+                    label: 'Moving Energy %',
+                    data: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    borderColor: 'rgba(255, 0, 0, 0.2)',
+                    backgroundColor: 'rgba(255, 0, 0, 0.2)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 5,
+                    pointHitRadius: 0,
+                    dragData: false,
+                    order: 1
+                },
+                {
+                    label: 'Set Moving Energy %',
+                    type: 'line',
+                    data: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    borderColor: 'rgba(255, 0, 0, 1)',
+                    fill: false,
+                    tension: 0.4,
+                    borderWidth: 5,
+                    pointHitRadius: 25,
+                    order: 2
+                },
+                {
+                    label: 'Stationary Energy %',
+                    type: 'line',
+                    data: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    borderColor: 'rgba(0, 255, 0,0.2)',
+                    backgroundColor: 'rgba(0, 255, 0, 0.2)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 5,
+                    pointHitRadius: 0,
+                    dragData: false,
+                    order: 3
+                },
+                {
+                    label: 'Set Stationary Energy %',
+                    type: 'line',
+                    data: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    borderColor: 'rgba(0, 255, 1)',
+                    fill: false,
+                    tension: 0.4,
+                    borderWidth: 5,
+                    pointHitRadius: 25,
+                    order: 4
+                },
+
+                {
+                    type: 'scatter',
+                    xAxisID: 'xDistance',
+                    label: 'Moving Target',
+                    fill: true,
+                    data: [{ x: 500, y: 50 }],
+
+                    borderColor: 'orange',
+                    pointStyle: 'triangle',
+                    borderWidth: 5,
+
+                    pointHitRadius: 25,
+                    dragData: false,
+                    order: 0
+
+                },
+                {
+                    type: 'scatter',
+                    xAxisID: 'xDistance',
+                    label: 'Stationary Target',
+                    fill: true,
+                    data: [{ x: 500, y: 50 }],
+
+                    borderColor: 'blue',
+                    pointStyle: 'rectRounded',
+                    usePointStyle: true,
+                    borderWidth: 5,
+
+                    pointHitRadius: 25,
+                    dragData: false,
+                    order: 0
+                },
+
+                {
+                    type: 'scatter',
+                    xAxisID: 'xDistance',
+                    label: 'Target Distance cm',
+                    fill: true,
+                    data: [{ x: 500, y: 1 }],
+
+                    borderColor: 'black',
+                    pointStyle: 'crossRot',
+                    usePointStyle: true,
+                    borderWidth: 5,
+
+                    pointHitRadius: 25,
+                    dragData: false,
+                    order: 0
+
+                }]
+            },
+
+
+            options: {
+                maintainAspectRatio: false,
+                responsive: true,
+
+                scales: {
+                    y: {
+                        title: {
+                            text: 'Energy in %',
+                            display: true,
+                        },
+                        scales: {
+                            min: 0,
+                            max: 100,
+                        }
+                    },
+
+                    x: {
+                        title: {
+                            text: 'Distance',
+                            display: true,
+                        },
+                        scales: {
+                            min: 0,
+                            max: 8,
+                        },
+                    },
+
+                    xDistance: {
+                        min: 0,
+                        max: 600,
+                        display: false,
+                    }
+                },
+
+
+                animation: {
+                    duration: 50,
+                },
+
+
+                onHover: function (e) {
+                    const point = e.chart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false)
+                    if (point.length) e.native.target.style.cursor = 'grab'
+                    else e.native.target.style.cursor = 'default'
+                },
+                plugins: {
+                    dragData: {
+                        round: 0,
+                        showTooltip: true,
+                        onDragStart: function (e, datasetIndex, index, value) { },
+
+                        onDrag: function (e, datasetIndex, index, value) {
+                            e.target.style.cursor = 'grabbing';
+
+                            // adjust chart scale 
+                            if (value < 100) {
+                                radarChart.data.datasets[datasetIndex].data[9] = value + 0.1;
+                            }
+                        },
+
+                        onDragEnd: function (e, datasetIndex, index, value) {
+                            e.target.style.cursor = 'default';
+
+                            var data = {};
+                            data.command = "setGateSensConf";
+                            data.datasetIndex = datasetIndex;
+                            data.index = index;
+                            data.value = value;
+                            websocket.send(JSON.stringify(data));
+                        },
+                    }
+                }
+            }
+        }
+
+        var ctx = document.getElementById('radarMotionChart').getContext('2d');
+        window.radarChart = new Chart(ctx, options);
+
+
+
+        var gateway = `ws://${window.location.hostname}/ws`;
+        var websocket;
+        window.addEventListener('load', onLoad);
+        function initWebSocket() {
+            console.log('Trying to open a WebSocket connection...');
+            websocket = new WebSocket(gateway);
+            websocket.onopen = onOpen;
+            websocket.onclose = onClose;
+            websocket.onmessage = onMessage;
+        }
+
+        function onOpen(event) {
+            console.log('Connection opened');
+        }
+
+        function onClose(event) {
+            console.log('Connection closed');
+            setTimeout(initWebSocket, 2000);
+        }
+
+        function onMessage(event) {
+
+            data = JSON.parse(event.data);
+
+            // change color off the element if radar has successfully executed the command
+            if (data.hasOwnProperty('result')) {
+                var element = document.getElementById(data.result.id);
+                if(element.id == 'Factory Reset' && data.result.success) {
+                    var baudRate = document.getElementById("baudRate");
+                    baudRate.value = 7;
+                }
+                changeColor(element, data.result.success);
+            }
+
+            // firmware version
+            if (data.hasOwnProperty('firmwareVersion')) {
+                document.getElementById("Radar Firmware Version").innerHTML = "Firmware Version: " +
+                    data.firmwareVersion.major
+                    + "." + data.firmwareVersion.minor
+                    + "." + data.firmwareVersion.bugFix;
+            }
+
+            // update settings
+            if (data.hasOwnProperty('settings')) {
+                // labels
+
+                document.getElementById("baudRateDetected").innerHTML = "Baud Rate detected: " + data.settings.baudRate;
+
+                //  inputs
+                document.getElementById("maxMovingGate").value = data.settings.maxMovingGate;
+                document.getElementById("maxStationaryGate").value = data.settings.maxStationaryGate;
+                document.getElementById("detectionTime").value = data.settings.detectionTime;
+
+                // update chart 
+                radarChart.data.datasets[1].data = data.settings.movingSensitivity;
+                radarChart.data.datasets[3].data = data.settings.stationarySensitivity;
+                radarChart.update();
+            }
+
+            if (data.hasOwnProperty('radarData')) {
+                // update chart
+                radarChart.data.datasets[0].data = data.engineeringData.movingEnergyGateN;
+                radarChart.data.datasets[2].data = data.engineeringData.stationaryEnergyGateN;
+                radarChart.data.datasets[4].data[0].x = data.radarData.movingTargetDistance;
+                radarChart.data.datasets[4].data[0].y = data.radarData.movingTargetEnergy;
+                radarChart.data.datasets[5].data[0].x = data.radarData.stationaryTargetDistance;
+                radarChart.data.datasets[5].data[0].y = data.radarData.stationaryTargetEnergy;
+                radarChart.data.datasets[6].data[0].x = data.radarData.detectionDistance;
+                if (data.radarData.targetState === 0) {
+                    radarChart.data.datasets[0].backgroundColor = 'rgba(255, 0, 0, 0.05)';
+                    radarChart.data.datasets[2].backgroundColor = 'rgba(0, 255, 0, 0.05)';
+                } else if (data.radarData.targetState === 1) {
+                    radarChart.data.datasets[0].backgroundColor = 'rgba(255, 0, 0, 0.5)';
+                    radarChart.data.datasets[2].backgroundColor = 'rgba(0, 255, 0, 0.05)';
+                } else if (data.radarData.targetState === 2) {
+                    radarChart.data.datasets[0].backgroundColor = 'rgba(255, 0, 0, 0.05)';
+                    radarChart.data.datasets[2].backgroundColor = 'rgba(0, 255, 0, 0.5)';
+                } else if (data.radarData.targetState === 3) {
+                    radarChart.data.datasets[0].backgroundColor = 'rgba(255, 0, 0, 0.5)';
+                    radarChart.data.datasets[2].backgroundColor = 'rgba(0, 255, 0, 0.5)';
+
+                }
+
+                radarChart.update();
+            }
+        }
+        function onLoad(event) {
+            initWebSocket();
+
+            // Register events for all buttons
+            var buttons = document.querySelectorAll(".btn").length;
+
+            for (var i = 0; i < buttons; i++) {
+                document.querySelectorAll(".btn")[i].id = document.querySelectorAll(".btn")[i].textContent;
+                document.querySelectorAll(".btn")[i].addEventListener("click", function (e) {
+                    e.target.style.backgroundColor = "yellow";
+                    var data = {};
+                    data.command = e.target.textContent;
+                    websocket.send(JSON.stringify(data));
+                });
+            }
+
+            // register events for all inputs
+            var inputs = document.querySelectorAll(".inp").length;
+
+            for (var i = 0; i < inputs; i++) {
+
+                document.querySelectorAll(".inp")[i].addEventListener("input", function (e) {
+                    e.target.style.backgroundColor = "yellow";
+                    var data = {};
+                    data.command = e.target.id;
+                    data.value = e.target.value;
+                    websocket.send(JSON.stringify(data));
+                });
+            }
+
+        }
+
+        function changeColor(element, success) {
+            if (success) {
+                element.style.backgroundColor = "green";
+            } else {
+                element.style.backgroundColor = "red";
+            }
+
+            setTimeout(() => {
+                element.style.backgroundColor = "";
+            }, 500);
+
+        }
+    </script>
+</body>
+
+</html>
