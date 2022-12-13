@@ -12,30 +12,30 @@ bool LD2410::begin() {
 }
 
 bool LD2410::read() {
-  return (parse() == 1);
+  return (_parse() == 1);
 }
 
-bool LD2410::sendCommand(RadarCommand cmd, const uint8_t *data, size_t dataSize) {
-  if (enableConfigMode()) {
-    if (sendRequestToRadar(cmd, data, dataSize)) {
+bool LD2410::_sendCommand(RadarCommand cmd, const uint8_t *data, size_t dataSize) {
+  if (_enableConfigMode()) {
+    if (_sendRequestToRadar(cmd, data, dataSize)) {
       // radar restarted so we don´t need to disable config mode
       if (cmd == RESTART) {
         return true;
       }
 
-      return (disableConfigMode());
+      return (_disableConfigMode());
     }
 
     // Disable config mode even if the command has failed
-    disableConfigMode();
+    _disableConfigMode();
   }
 
   return false;
 }
 
-bool LD2410::sendRequestToRadar(RadarCommand cmd, const uint8_t *data, size_t dataSize) {
+bool LD2410::_sendRequestToRadar(RadarCommand cmd, const uint8_t *data, size_t dataSize) {
   // send command Header
-  _radarUart->write(commandHeader, sizeof(commandHeader));
+  _radarUart->write(_commandHeader, sizeof(_commandHeader));
 
   // send frame data length
   _radarUart->write(sizeof(cmd) + dataSize);
@@ -49,14 +49,14 @@ bool LD2410::sendRequestToRadar(RadarCommand cmd, const uint8_t *data, size_t da
   _radarUart->write(data, dataSize);
 
   // send command tail (mfr)
-  _radarUart->write(commandTail, sizeof(commandTail));
+  _radarUart->write(_commandTail, sizeof(_commandTail));
 
   // wait send is completed
   _radarUart->flush();
 
   unsigned long timeout = millis();
   while (millis() - timeout < 100) {
-    uint16_t res = parse();
+    uint16_t res = _parse();
     // command was successfully executed
     if (res == cmd) {
       return true;
@@ -69,15 +69,15 @@ bool LD2410::sendRequestToRadar(RadarCommand cmd, const uint8_t *data, size_t da
   return false;
 }
 
-bool LD2410::sendCommand(RadarCommand cmd) {
-  return sendCommand(cmd, NULL, 0);
+bool LD2410::_sendCommand(RadarCommand cmd) {
+  return _sendCommand(cmd, NULL, 0);
 }
 
-uint16_t LD2410::charToUint(char c1, char c2) {
+uint16_t LD2410::_charToUint(char c1, char c2) {
   return (uint16_t)(c1 | c2 << 8);
 }
 
-uint16_t LD2410::parse() {
+uint16_t LD2410::_parse() {
   static bool dataPayload;
   static ParserState parserState;
   static uint8_t dataLength, receivedBytes;
@@ -90,18 +90,18 @@ uint16_t LD2410::parse() {
       case FIND_FRAME_HEADER:
 
         // move data until frame header is found
-        memmove(&dataBuffer[0], &dataBuffer[1], sizeof(dataHeader) - 1);
+        memmove(&dataBuffer[0], &dataBuffer[1], sizeof(_dataHeader) - 1);
         dataBuffer[3] = readChar;
 
         // Check for data header
-        if (!memcmp(dataBuffer, dataHeader, sizeof(dataHeader))) {
+        if (!memcmp(dataBuffer, _dataHeader, sizeof(_dataHeader))) {
           dataPayload   = true;
           parserState   = RECEIVE_DATA_LENGTH;
           receivedBytes = 0;
         }
 
         // Check for command header
-        if (!memcmp(dataBuffer, commandHeader, sizeof(commandHeader))) {
+        if (!memcmp(dataBuffer, _commandHeader, sizeof(_commandHeader))) {
           dataPayload   = false;
           parserState   = RECEIVE_DATA_LENGTH;
           receivedBytes = 0;
@@ -113,7 +113,7 @@ uint16_t LD2410::parse() {
         dataBuffer[receivedBytes++] = readChar;
 
         if (receivedBytes >= 2) {
-          dataLength = charToUint(dataBuffer[0], dataBuffer[1]);
+          dataLength = _charToUint(dataBuffer[0], dataBuffer[1]);
 
           // buffer overflow check
           if (dataLength > sizeof(dataBuffer)) {
@@ -129,16 +129,16 @@ uint16_t LD2410::parse() {
       case RECEIVE_DATA:
         dataBuffer[receivedBytes++] = readChar;
 
-        if (receivedBytes == dataLength + sizeof(dataTail)) {
+        if (receivedBytes == dataLength + sizeof(_dataTail)) {
           if (dataPayload) {
             // Tail not found
-            if (memcmp(&dataBuffer[dataLength], dataTail, sizeof(dataTail))) {
+            if (memcmp(&dataBuffer[dataLength], _dataTail, sizeof(_dataTail))) {
               parserState = FIND_FRAME_HEADER;
               return 0;
             }
 
             // Engineering mode active
-            radar.cyclicData.radarInEngineeringMode = dataBuffer[0] == 0x01;
+            _cyclicData.radarInEngineeringMode = dataBuffer[0] == 0x01;
 
             // cyclicData Header 0XAA
             if (dataBuffer[1] != 0xAA) {
@@ -147,41 +147,41 @@ uint16_t LD2410::parse() {
             }
 
             // Target State
-            radar.cyclicData.targetState = (TargetState)dataBuffer[2];
+            _cyclicData.targetState = (TargetState)dataBuffer[2];
 
             // moving target distance
-            radar.cyclicData.movingTargetDistance = charToUint(dataBuffer[3], dataBuffer[4]);
+            _cyclicData.movingTargetDistance = _charToUint(dataBuffer[3], dataBuffer[4]);
 
             // moving target energy value
-            radar.cyclicData.movingTargetEnergy = dataBuffer[5];
+            _cyclicData.movingTargetEnergy = dataBuffer[5];
 
             // stationary target distance
-            radar.cyclicData.stationaryTargetDistance = charToUint(dataBuffer[6], dataBuffer[7]);
+            _cyclicData.stationaryTargetDistance = _charToUint(dataBuffer[6], dataBuffer[7]);
 
             // stationary target energy value
-            radar.cyclicData.stationaryTargetEnergy = dataBuffer[8];
+            _cyclicData.stationaryTargetEnergy = dataBuffer[8];
 
             // detection distance
-            radar.cyclicData.detectionDistance = charToUint(dataBuffer[9], dataBuffer[10]);
+            _cyclicData.detectionDistance = _charToUint(dataBuffer[9], dataBuffer[10]);
 
-            if (radar.cyclicData.radarInEngineeringMode) {
+            if (_cyclicData.radarInEngineeringMode) {
               // Maximum distance gate
-              radar.engineeringData.maxMovingGate     = dataBuffer[11];
-              radar.engineeringData.maxStationaryGate = dataBuffer[12];
+              _engineeringData.maxMovingGate     = dataBuffer[11];
+              _engineeringData.maxStationaryGate = dataBuffer[12];
 
               // Moving energy per gate
               for (uint8_t gate = 0; gate <= 8; gate++) {
-                radar.engineeringData.movingEnergyGateN[gate] = dataBuffer[13 + gate];
+                _engineeringData.movingEnergyGateN[gate] = dataBuffer[13 + gate];
               }
 
               // Stationary energy per gate
               for (uint8_t gate = 0; gate <= 8; gate++) {
-                radar.engineeringData.stationaryEnergyGateN[gate] = dataBuffer[22 + gate];
+                _engineeringData.stationaryEnergyGateN[gate] = dataBuffer[22 + gate];
               }
 
               // max energy per gate
-              radar.engineeringData.maxMovingEnergy     = dataBuffer[31];
-              radar.engineeringData.maxStationaryEnergy = dataBuffer[32];
+              _engineeringData.maxMovingEnergy     = dataBuffer[31];
+              _engineeringData.maxStationaryEnergy = dataBuffer[32];
 
               // 0x55 cyclicData tail and check (0x00)
               if (dataBuffer[33] == 0x55 && dataBuffer[34] == 0x00) {
@@ -190,7 +190,7 @@ uint16_t LD2410::parse() {
               }
 
             } else {
-              memset(&radar.engineeringData, 0, sizeof(radar.engineeringData));
+              memset(&_engineeringData, 0, sizeof(_engineeringData));
 
               // 0x55 cyclicData tail and check (0x00)
               if (dataBuffer[11] == 0x55 && dataBuffer[12] == 0x00) {
@@ -204,15 +204,15 @@ uint16_t LD2410::parse() {
           } else {  // Command data
 
             // Tail not found
-            if (memcmp(&dataBuffer[dataLength], commandTail, sizeof(commandTail))) {
+            if (memcmp(&dataBuffer[dataLength], _commandTail, sizeof(_commandTail))) {
               parserState = FIND_FRAME_HEADER;
               return false;
             }
 
             // Acknowledge for command data
-            uint16_t cmd = charToUint(dataBuffer[1], dataBuffer[0]) - 1;
+            uint16_t cmd = _charToUint(dataBuffer[1], dataBuffer[0]) - 1;
 
-            bool fail = charToUint(dataBuffer[2], dataBuffer[3]) != 0;
+            bool fail = _charToUint(dataBuffer[2], dataBuffer[3]) != 0;
 
             switch (cmd) {
               case READ_PARAMETER:
@@ -221,25 +221,25 @@ uint16_t LD2410::parse() {
                   return 0;
                 }
 
-                radar.parameter.maxGate           = dataBuffer[5];
-                radar.parameter.maxMovingGate     = dataBuffer[6];
-                radar.parameter.maxStationaryGate = dataBuffer[7];
+                _parameter.maxGate           = dataBuffer[5];
+                _parameter.maxMovingGate     = dataBuffer[6];
+                _parameter.maxStationaryGate = dataBuffer[7];
 
                 for (uint8_t gate = 0; gate <= 8; gate++) {
-                  radar.parameter.movingSensitivity[gate] = dataBuffer[8 + gate];
+                  _parameter.movingSensitivity[gate] = dataBuffer[8 + gate];
                 }
 
                 for (uint8_t gate = 0; gate <= 8; gate++) {
-                  radar.parameter.stationarySensitivity[gate] = dataBuffer[17 + gate];
+                  _parameter.stationarySensitivity[gate] = dataBuffer[17 + gate];
                 }
 
-                radar.parameter.detectionTime = charToUint(dataBuffer[26], dataBuffer[27]);
+                _parameter.detectionTime = _charToUint(dataBuffer[26], dataBuffer[27]);
                 break;
               case READ_FIRMWARE_VERSION:
 
-                radar.firmwareVersion.minorVersion  = dataBuffer[6];
-                radar.firmwareVersion.majorVersion  = dataBuffer[7];
-                radar.firmwareVersion.bugFixVersion = uint32_t(
+                _firmwareVersion.minorVersion  = dataBuffer[6];
+                _firmwareVersion.majorVersion  = dataBuffer[7];
+                _firmwareVersion.bugFixVersion = uint32_t(
                     dataBuffer[8] | dataBuffer[9] << 8 |
                     dataBuffer[10] << 16 | dataBuffer[11] << 24);
 
@@ -261,14 +261,14 @@ uint16_t LD2410::parse() {
   return 0;  // no data
 }
 
-bool LD2410::enableConfigMode() {
+bool LD2410::_enableConfigMode() {
   uint8_t data[2] = {0x01, 0x00};
-  sendRequestToRadar(ENABLE_CONFIG_MODE, data, sizeof(data));
+  _sendRequestToRadar(ENABLE_CONFIG_MODE, data, sizeof(data));
   return true; // TODO
 }
 
-bool LD2410::disableConfigMode() {
-  sendRequestToRadar(DISABLE_CONFIG_MODE, NULL, 0);  
+bool LD2410::_disableConfigMode() {
+  _sendRequestToRadar(DISABLE_CONFIG_MODE, NULL, 0);  
   return true; // TODO
 }
 
@@ -302,18 +302,18 @@ bool LD2410::setMaxDistAndDur(uint8_t maxMovingRange, uint8_t maxStationaryRange
       0x00   // fill byte
   };
 
-  return sendCommand(SET_MAX_DIST_AND_DUR, data, sizeof(data));
+  return _sendCommand(SET_MAX_DIST_AND_DUR, data, sizeof(data));
 }
 
 bool LD2410::readParameter() {
-  return sendCommand(READ_PARAMETER);
+  return _sendCommand(READ_PARAMETER);
 }
 
 bool LD2410::enableEngMode(bool enable) {
   if (enable) {
-    return sendCommand(ENABLE_ENGINEERING_MODE);
+    return _sendCommand(ENABLE_ENGINEERING_MODE);
   }
-  return sendCommand(DISABLE_ENGINEERING_MODE);
+  return _sendCommand(DISABLE_ENGINEERING_MODE);
 }
 
 bool LD2410::setGateSensConf(uint8_t gate, uint8_t movingSensitivity, uint8_t stationarySensitivity) {
@@ -346,7 +346,7 @@ bool LD2410::setGateSensConf(uint8_t gate, uint8_t movingSensitivity, uint8_t st
       0x00                    // fill byte
   };
 
-  return sendCommand(SET_GATE_SENS_CONFIG, data, sizeof(data));
+  return _sendCommand(SET_GATE_SENS_CONFIG, data, sizeof(data));
 }
 
 bool LD2410::setBaudRate(BaudRateIndex baudRate) {
@@ -354,17 +354,17 @@ bool LD2410::setBaudRate(BaudRateIndex baudRate) {
       baudRate,
       0x00};
 
-  return sendCommand(SET_BAUDRATE, data, sizeof(data));
+  return _sendCommand(SET_BAUDRATE, data, sizeof(data));
 }
 
 bool LD2410::factoryReset() {
-  return sendCommand(FACTORY_RESET);
+  return _sendCommand(FACTORY_RESET);
 }
 
 bool LD2410::restart() {
-  return sendCommand(RESTART);
+  return _sendCommand(RESTART);
 }
 
 bool LD2410::readFirmwareVersion() {
-  return sendCommand(READ_FIRMWARE_VERSION);
+  return _sendCommand(READ_FIRMWARE_VERSION);
 }

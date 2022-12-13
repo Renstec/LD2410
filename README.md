@@ -12,12 +12,12 @@ The module is connected via its serial interface which has a logic level of 3V3 
 | RX  | TX   |
 
 ## Methods
-All public methods return a boolean value.
+All public methods return a boolean value, if the method is executed successfully.
 The following methods are publicly available.
 
 ```
 LD2410(Stream &radarUart);            // Constructor Stream must be set up outside the lib
-bool begin();                         // Reads the firmware version and the parameters from the radars.	
+bool begin();                         // Reads the firmware version and the parameters from the radar.	
 read();                               // Check if received data from the radar 
 bool enableEngMode(bool enable);      // Enables or disables the engineering mode.
 bool factoryReset();                  // Factory reset the radar
@@ -37,7 +37,7 @@ bool setMaxDistAndDur(uint8_t maxMovingRange,uint8_t maxStationaryRange,uint16
 The senor data is provided in structures.
 The following structures are available.
 
-### LD2410.data.cyclicData
+### LD2410.cyclicData
 The cyclic data from the sensor are stored in the structure cyclicData, which are fetched from the sensor with the function read().
 
 ```
@@ -50,7 +50,7 @@ uint8_t stationaryTargetEnergy;     // stationary target energy value 0-100 %
 uint8_t detectionDistance;          // detection distance in cm
 ```
 
-### LD2410.data.engineeringData
+### LD2410.engineeringData
 The engineering data of the sensor is stored in the structure engineeringData
 after the engineering mode was activated with the function enableEngMode().
 
@@ -63,7 +63,7 @@ uint8_t movingEnergyGateN[9];      // moving energy per gate
 uint8_t stationaryEnergyGateN[9];  // stationary energy per gate
 ```
 
-### LD2410.data.firmwareVersion
+### LD2410.firmwareVersion
 In the structure firmwareVersion the firmware version of the sensor is stored after the function begin or readFirmwareVersion() was successfully.
 
 ```
@@ -72,7 +72,7 @@ uint8_t minorVersion;    // minor version of the radar firmware
 uint32_t bugFixVersion;  // bug fix version of the radar firmware
 ```
 
-### LD2410.data.parameter
+### LD2410.parameter
 In the structure parameter the read sensor parameters are stored after the call begin() or readParameter() was successfully.
 
 ```
@@ -95,6 +95,6 @@ A simple web interface is provided as example for the sensor configuration.
 * Stationary Energy: Shows the stationary energy per gate.
 * Set Stationary Energy: Shows the set thresholds for the stationary energy per gate.
 
-[![Showcase Gif](https://raw.githubusercontent.com/Renstec/LD2410/main/pics/WebIfAnimation.gif)]
+![Showcase Gif](https://raw.githubusercontent.com/Renstec/LD2410/main/pics/WebIfAnimation.gif)
 
 Thanks for the awesome arduino library's  [ArduinoJson](https://github.com/bblanchon/ArduinoJson), [AsyncTCP](https://github.com/me-no-dev/AsyncTCP) and [ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer) and also for the great [ChartJs](https://github.com/chartjs) [Plugin](https://github.com/chrispahm/chartjs-plugin-dragdata) for dragging data.  

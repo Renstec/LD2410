@@ -27,6 +27,7 @@ enum BaudRateIndex : uint8_t {
 };
 
 class LD2410 {
+ private:
   /**
    * @brief Stucture of Parameters from Radar
    */
@@ -74,17 +75,6 @@ class LD2410 {
   };
 
   /**
-   * @brief Structure that holds the parsed data of the radar
-   */
-  struct Radar {
-    FirmwareVersion firmwareVersion;  // firmware version of the radar
-    Parameter parameter;              // parameters of the radar
-    CyclicData cyclicData;            // data of from the radar
-    EngineeringData engineeringData;  // engineering data from the radar
-
-  } radar;
-
-  /**
    * @brief List of the radar commands
    */
   enum RadarCommand : uint16_t {
@@ -120,7 +110,7 @@ class LD2410 {
    * @return false Command executed with errors
    */
 
-  bool sendCommand(RadarCommand cmd, const uint8_t* data, size_t dataSize);
+  bool _sendCommand(RadarCommand cmd, const uint8_t* data, size_t dataSize);
 
   /**
    * @brief Helper function to send and command to the radar without data
@@ -129,7 +119,7 @@ class LD2410 {
    * @return true Command executed successfully
    * @return false Command executed with errors
    */
-  bool sendCommand(RadarCommand cmd);
+  bool _sendCommand(RadarCommand cmd);
 
   /**
    * @brief Funtion to send the data to the radar
@@ -139,7 +129,7 @@ class LD2410 {
    * @return true Request was executed successfully
    * @return false Request executed with errors
    */
-  bool sendRequestToRadar(RadarCommand cmd, const uint8_t* data, size_t dataSize);
+  bool _sendRequestToRadar(RadarCommand cmd, const uint8_t* data, size_t dataSize);
 
   /**
    * @brief Helper function to convert tow char to an uint16_t
@@ -148,14 +138,14 @@ class LD2410 {
    * @param c2 Char 2
    * @return uint16_t converted value
    */
-  uint16_t charToUint(char c1, char c2);
+  uint16_t _charToUint(char c1, char c2);
 
   /**
    * @brief Receive and parse data from the radar
    *
    * @return uint16_t > 0 Received new data or the Acknowledge for a command
    */
-  uint16_t parse();
+  uint16_t _parse();
 
   /**
    * @brief Enables the configuration mode on the LD2410
@@ -163,7 +153,7 @@ class LD2410 {
    * @return true Enabled configuration mode successfully
    * @return false Failed to enable configuration mode
    */
-  bool enableConfigMode();
+  bool _enableConfigMode();
 
   /**
    * @brief Disables the configuration mode on the LD2410
@@ -171,19 +161,31 @@ class LD2410 {
    * @return true Disabled the configuration mode successfully
    * @return false Failed to disable the configuration mode
    */
-  bool disableConfigMode();
+  bool _disableConfigMode();
+
+  // readed firmware version of the radar
+  FirmwareVersion _firmwareVersion;
+
+  // parameters from the radar
+  Parameter _parameter;     
+
+  // cyclic data of from the radar         
+  CyclicData _cyclicData; 
+
+  // engineering data from the radar          
+  EngineeringData _engineeringData;  
 
   // Data Header
-  const uint8_t dataHeader[4] = {0XF4, 0xF3, 0XF2, 0xF1};
+  const uint8_t _dataHeader[4] = {0XF4, 0xF3, 0XF2, 0xF1};
 
   // Data tail
-  const uint8_t dataTail[4] = {0xF8, 0xF7, 0xF6, 0xF5};
+  const uint8_t _dataTail[4] = {0xF8, 0xF7, 0xF6, 0xF5};
 
   // Command Header
-  const uint8_t commandHeader[4] = {0XFD, 0xFC, 0XFB, 0xFA};
+  const uint8_t _commandHeader[4] = {0XFD, 0xFC, 0XFB, 0xFA};
 
   // Command tail
-  const uint8_t commandTail[4] = {0x04, 0x03, 0x02, 0x01};
+  const uint8_t _commandTail[4] = {0x04, 0x03, 0x02, 0x01};
 
   // radars uart port
   Stream* _radarUart;
@@ -294,6 +296,15 @@ class LD2410 {
    */
   bool readFirmwareVersion();
 
-  // Reference to the radars data structure
-  const Radar& data = radar;
+  // Reference to the radars cyclic Data
+  const CyclicData& cyclicData = _cyclicData;
+
+  // Reference to the radars engineering Data
+  const EngineeringData& engineeringData = _engineeringData;
+
+  // Reference to the radars parameters
+  const Parameter& parameter = _parameter;
+
+  // Reference to the radars firmware version
+  const FirmwareVersion& firmwareVersion = _firmwareVersion;
 };
